@@ -2,6 +2,8 @@ const path = require("path");
 
 const { build } = require("esbuild");
 
+const SHOULD_GENERATE_SOURCEMAPS = process.env.EXCALIDRAW_SOURCEMAP === "1";
+
 // contains all dependencies bundled inside
 const getConfig = (outdir) => ({
   outdir,
@@ -19,7 +21,7 @@ const getConfig = (outdir) => ({
 function buildDev(config) {
   return build({
     ...config,
-    sourcemap: true,
+    sourcemap: SHOULD_GENERATE_SOURCEMAPS,
     define: {
       "import.meta.env": JSON.stringify({ DEV: true }),
     },

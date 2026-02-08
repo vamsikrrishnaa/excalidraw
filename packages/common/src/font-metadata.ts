@@ -41,6 +41,14 @@ export const FONT_METADATA: Record<number, FontMetadata> = {
       lineHeight: 1.25,
     },
   },
+  [FONT_FAMILY.Hind]: {
+    metrics: {
+      unitsPerEm: 1000,
+      ascender: 800,
+      descender: -200,
+      lineHeight: 1.25,
+    },
+  },
   [FONT_FAMILY.Nunito]: {
     metrics: {
       unitsPerEm: 1000,

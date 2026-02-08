@@ -16,6 +16,8 @@ const ENV_VARS = {
   },
 };
 
+const SHOULD_GENERATE_SOURCEMAPS = process.env.EXCALIDRAW_SOURCEMAP === "1";
+
 // excludes all external dependencies and bundles only the source code
 const getConfig = (outdir) => ({
   outdir,
@@ -39,7 +41,7 @@ const getConfig = (outdir) => ({
 function buildDev(config) {
   return build({
     ...config,
-    sourcemap: true,
+    sourcemap: SHOULD_GENERATE_SOURCEMAPS,
     define: {
       "import.meta.env": JSON.stringify(ENV_VARS.development),
     },

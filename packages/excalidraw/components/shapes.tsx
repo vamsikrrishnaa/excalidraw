@@ -7,6 +7,9 @@ import {
   EllipseIcon,
   ArrowIcon,
   LineIcon,
+  starIcon,
+  messageCircleIcon,
+  polygonIcon,
   FreedrawIcon,
   TextIcon,
   ImageIcon,
@@ -31,6 +34,13 @@ export const SHAPES = [
     fillable: true,
   },
   {
+    icon: starIcon,
+    value: "star",
+    key: KEYS.Y,
+    numericKey: null,
+    fillable: true,
+  },
+  {
     icon: DiamondIcon,
     value: "diamond",
     key: KEYS.D,
@@ -45,6 +55,13 @@ export const SHAPES = [
     fillable: true,
   },
   {
+    icon: messageCircleIcon,
+    value: "speechBubble",
+    key: KEYS.H,
+    numericKey: null,
+    fillable: true,
+  },
+  {
     icon: ArrowIcon,
     value: "arrow",
     key: KEYS.A,
@@ -56,6 +73,13 @@ export const SHAPES = [
     value: "line",
     key: KEYS.L,
     numericKey: KEYS["6"],
+    fillable: true,
+  },
+  {
+    icon: polygonIcon,
+    value: "polygon",
+    key: KEYS.K,
+    numericKey: null,
     fillable: true,
   },
   {

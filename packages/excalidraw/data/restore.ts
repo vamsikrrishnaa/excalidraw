@@ -96,9 +96,12 @@ export const AllowedExcalidrawActiveTools: Record<
   lasso: true,
   text: true,
   rectangle: true,
+  star: true,
   diamond: true,
   ellipse: true,
+  speechBubble: true,
   line: true,
+  polygon: true,
   image: true,
   arrow: true,
   freedraw: true,
@@ -291,6 +294,39 @@ export const restoreElement = (
 ): typeof element | null => {
   element = { ...element };
 
+  if ((element as any).type === "presentation") {
+    const legacy = element as any;
+    const migrated: any = {
+      ...legacy,
+      type: "embeddable",
+      customData: {
+        ...(legacy.customData || {}),
+        kind: "presentation",
+        presentation: {
+          ...(legacy.customData?.presentation || {}),
+          fileId: legacy.fileId ?? null,
+          status: legacy.status || "pending",
+        },
+      },
+      link: legacy.link ?? "about:blank",
+    };
+    delete migrated.fileId;
+    delete migrated.status;
+    element = migrated;
+  }
+
+  if ((element as any).type === "embeddable") {
+    const customData = (element as any).customData;
+    if (
+      customData &&
+      typeof customData === "object" &&
+      customData.kind === "presentation" &&
+      !(element as any).link
+    ) {
+      (element as any).link = "about:blank";
+    }
+  }
+
   switch (element.type) {
     case "text":
       // temp fix: cleanup legacy obsidian-excalidraw attribute else it'll
@@ -449,6 +485,8 @@ export const restoreElement = (
     case "ellipse":
     case "rectangle":
     case "diamond":
+    case "star":
+    case "speechBubble":
     case "iframe":
     case "embeddable":
       return restoreElementWithProperties(element, {});
@@ -817,8 +855,17 @@ export const restoreAppState = (
         : defaultValue;
   }
 
+  const searchMatches = (nextAppState as any).searchMatches;
+  const normalizedSearchMatches =
+    searchMatches &&
+    typeof searchMatches === "object" &&
+    Array.isArray((searchMatches as any).matches)
+      ? searchMatches
+      : null;
+
   return {
     ...nextAppState,
+    searchMatches: normalizedSearchMatches,
     cursorButton: localAppState?.cursorButton || "up",
     // reset on fresh restore so as to hide the UI button if penMode not active
     penDetected:

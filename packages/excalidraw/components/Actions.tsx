@@ -1097,8 +1097,12 @@ export const ShapesSwitcher = ({
           const letter =
             key && capitalizeString(typeof key === "string" ? key : key[0]);
           const shortcut = letter
-            ? `${letter} ${t("helpDialog.or")} ${numericKey}`
-            : `${numericKey}`;
+            ? numericKey
+              ? `${letter} ${t("helpDialog.or")} ${numericKey}`
+              : `${letter}`
+            : numericKey
+              ? `${numericKey}`
+              : "";
           // when in compact styles panel mode (tablet)
           // use a ToolPopover for selection/lasso toggle as well
           if (
@@ -1142,10 +1146,14 @@ export const ShapesSwitcher = ({
               icon={icon}
               checked={activeTool.type === value}
               name="editor-current-shape"
-              title={`${capitalizeString(label)} — ${shortcut}`}
+              title={
+                shortcut
+                  ? `${capitalizeString(label)} — ${shortcut}`
+                  : `${capitalizeString(label)}`
+              }
               keyBindingLabel={numericKey || letter}
               aria-label={capitalizeString(label)}
-              aria-keyshortcuts={shortcut}
+              aria-keyshortcuts={shortcut || undefined}
               data-testid={`toolbar-${value}`}
               onPointerDown={({ pointerType }) => {
                 if (!app.state.penDetected && pointerType === "pen") {
@@ -1227,6 +1235,13 @@ export const ShapesSwitcher = ({
             selected={embeddableToolSelected}
           >
             {t("toolBar.embeddable")}
+          </DropdownMenu.Item>
+          <DropdownMenu.Item
+            onSelect={() => app.onPresentationToolbarButtonClick()}
+            icon={EmbedIcon}
+            data-testid="toolbar-presentation"
+          >
+            {t("toolBar.presentation")}
           </DropdownMenu.Item>
           <DropdownMenu.Item
             onSelect={() => app.setActiveTool({ type: "laser" })}

@@ -50,6 +50,8 @@ import type {
   ExcalidrawLinearElement,
   ExcalidrawRectangleElement,
   ExcalidrawSelectionElement,
+  ExcalidrawSpeechBubbleElement,
+  ExcalidrawStarElement,
   ExcalidrawTextElement,
 } from "@excalidraw/element/types";
 import type { Curve, LineSegment, Polygon, Radians } from "@excalidraw/math";
@@ -104,6 +106,8 @@ export type GeometricShape<Point extends GlobalPoint | LocalPoint> =
 
 type RectangularElement =
   | ExcalidrawRectangleElement
+  | ExcalidrawStarElement
+  | ExcalidrawSpeechBubbleElement
   | ExcalidrawDiamondElement
   | ExcalidrawFrameLikeElement
   | ExcalidrawEmbeddableElement
@@ -132,6 +136,41 @@ export const getPolygonShape = <Point extends GlobalPoint | LocalPoint>(
       pointRotateRads(pointFrom(cx, y + height), center, angle),
       pointRotateRads(pointFrom(x, cy), center, angle),
     );
+  } else if (element.type === "star") {
+    const outerX = width / 2;
+    const outerY = height / 2;
+    const innerX = outerX * 0.5;
+    const innerY = outerY * 0.5;
+
+    const points: Point[] = [];
+    for (let i = 0; i < 10; i++) {
+      const a = -Math.PI / 2 + (i * Math.PI) / 5;
+      const isOuter = i % 2 === 0;
+      const rx = isOuter ? outerX : innerX;
+      const ry = isOuter ? outerY : innerY;
+      const px = cx + Math.cos(a) * rx;
+      const py = cy + Math.sin(a) * ry;
+      points.push(pointRotateRads(pointFrom(px, py), center, angle));
+    }
+    data = polygon(...(points as Point[]));
+  } else if (element.type === "speechBubble") {
+    const tailHeight = Math.min(height * 0.25, Math.min(width, height) * 0.25);
+    const rectHeight = Math.max(0, height - tailHeight);
+    const tailLeft = x + width * 0.4;
+    const tailRight = x + width * 0.6;
+    const tailTipX = x + width * 0.5;
+
+    const points: Point[] = [
+      pointFrom(x, y),
+      pointFrom(x + width, y),
+      pointFrom(x + width, y + rectHeight),
+      pointFrom(tailRight, y + rectHeight),
+      pointFrom(tailTipX, y + height),
+      pointFrom(tailLeft, y + rectHeight),
+      pointFrom(x, y + rectHeight),
+    ].map((p) => pointRotateRads(p, center, angle)) as Point[];
+
+    data = polygon(...(points as Point[]));
   } else {
     data = polygon(
       pointRotateRads(pointFrom(x, y), center, angle),

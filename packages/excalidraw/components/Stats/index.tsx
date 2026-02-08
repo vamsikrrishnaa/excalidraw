@@ -40,6 +40,8 @@ import type {
   ExcalidrawProps,
 } from "../../types";
 
+import type { TranslationKeys } from "../../i18n";
+
 interface StatsProps {
   app: AppClassProperties;
   onClose: () => void;
@@ -296,7 +298,7 @@ export const StatsInner = memo(
                       >
                         {appState.croppingElementId
                           ? t("labels.imageCropping")
-                          : t(`element.${singleElement.type}`)}
+                          : t(`element.${singleElement.type}` as TranslationKeys)}
                       </StatsRow>
 
                       <StatsRow>

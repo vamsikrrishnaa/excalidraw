@@ -1,12 +1,15 @@
 import {
   curvePointDistance,
   distanceToLineSegment,
+  lineSegment,
   pointRotateRads,
 } from "@excalidraw/math";
 
 import { ellipse, ellipseDistanceFromPoint } from "@excalidraw/math/ellipse";
 
 import type { GlobalPoint, Radians } from "@excalidraw/math";
+
+import { getPolygonShape } from "@excalidraw/utils/shape";
 
 import {
   deconstructDiamondElement,
@@ -24,6 +27,8 @@ import type {
   ExcalidrawFreeDrawElement,
   ExcalidrawLinearElement,
   ExcalidrawRectanguloidElement,
+  ExcalidrawSpeechBubbleElement,
+  ExcalidrawStarElement,
 } from "./types";
 
 export const distanceToElement = (
@@ -41,6 +46,9 @@ export const distanceToElement = (
     case "frame":
     case "magicframe":
       return distanceToRectanguloidElement(element, elementsMap, p);
+    case "star":
+    case "speechBubble":
+      return distanceToPolygonElement(element, p);
     case "diamond":
       return distanceToDiamondElement(element, elementsMap, p);
     case "ellipse":
@@ -50,6 +58,27 @@ export const distanceToElement = (
     case "freedraw":
       return distanceToLinearOrFreeDraElement(element, p);
   }
+};
+
+const distanceToPolygonElement = (
+  element: ExcalidrawStarElement | ExcalidrawSpeechBubbleElement,
+  p: GlobalPoint,
+): number => {
+  const polygonShape = getPolygonShape<GlobalPoint>(element) as {
+    type: "polygon";
+    data: GlobalPoint[];
+  };
+
+  const points = polygonShape.data;
+  if (points.length < 2) {
+    return Infinity;
+  }
+
+  const segments = points.map((a, index) =>
+    lineSegment(a, points[(index + 1) % points.length]),
+  );
+
+  return Math.min(...segments.map((s) => distanceToLineSegment(p, s)));
 };
 
 /**

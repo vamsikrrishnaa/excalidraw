@@ -1499,7 +1499,7 @@ const _renderInteractiveScene = ({
     context.restore();
   }
 
-  appState.searchMatches?.matches.forEach(({ id, focus, matchedLines }) => {
+  appState.searchMatches?.matches?.forEach(({ id, focus, matchedLines }) => {
     const element = elementsMap.get(id);
 
     if (element) {
@@ -1528,7 +1528,7 @@ const _renderInteractiveScene = ({
       context.translate(cx, cy);
       context.rotate(element.angle);
 
-      matchedLines.forEach((matchedLine) => {
+      matchedLines?.forEach((matchedLine) => {
         (matchedLine.showOnCanvas || focus) &&
           context.fillRect(
             elementX1 + matchedLine.offsetX / zoomFactor - cx,

@@ -59,6 +59,7 @@ const ExcalidrawBase = (props: ExcalidrawProps) => {
   } = props;
 
   const canvasActions = props.UIOptions?.canvasActions;
+  const defaultTools = DEFAULT_UI_OPTIONS.tools ?? { image: true };
 
   // FIXME normalize/set defaults in parent component so that the memo resolver
   // compares the same values
@@ -69,7 +70,9 @@ const ExcalidrawBase = (props: ExcalidrawProps) => {
       ...canvasActions,
     },
     tools: {
-      image: props.UIOptions?.tools?.image ?? true,
+      ...defaultTools,
+      ...props.UIOptions?.tools,
+      image: props.UIOptions?.tools?.image ?? defaultTools.image,
     },
   };
 

@@ -152,8 +152,10 @@ export type ElementShape = Drawable | Drawable[] | null;
 
 export type ElementShapes = {
   rectangle: Drawable;
+  star: Drawable;
   ellipse: Drawable;
   diamond: Drawable;
+  speechBubble: Drawable;
   iframe: Drawable;
   embeddable: Drawable;
   freedraw: Drawable | null;

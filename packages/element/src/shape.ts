@@ -211,6 +211,7 @@ export const generateRoughOptions = (
 
   switch (element.type) {
     case "rectangle":
+    case "star":
     case "iframe":
     case "embeddable":
     case "diamond":
@@ -222,6 +223,13 @@ export const generateRoughOptions = (
       if (element.type === "ellipse") {
         options.curveFitting = 1;
       }
+      return options;
+    }
+    case "speechBubble": {
+      options.fillStyle = element.fillStyle;
+      options.fill = isTransparent(element.backgroundColor)
+        ? undefined
+        : element.backgroundColor;
       return options;
     }
     case "line":
@@ -717,6 +725,61 @@ const generateElementShape = (
       );
       return shape;
     }
+    case "star": {
+      const w = element.width;
+      const h = element.height;
+
+      const cx = w / 2;
+      const cy = h / 2;
+      const outerX = w / 2;
+      const outerY = h / 2;
+      const innerX = outerX * 0.5;
+      const innerY = outerY * 0.5;
+
+      const points: RoughPoint[] = [];
+      for (let i = 0; i < 10; i++) {
+        const angle = (-Math.PI / 2 + (i * Math.PI) / 5) as number;
+        const isOuter = i % 2 === 0;
+        const rx = isOuter ? outerX : innerX;
+        const ry = isOuter ? outerY : innerY;
+        points.push([cx + Math.cos(angle) * rx, cy + Math.sin(angle) * ry]);
+      }
+
+      return generator.polygon(points, generateRoughOptions(element));
+    }
+    case "speechBubble": {
+      const w = element.width;
+      const h = element.height;
+      const tailHeight = Math.min(h * 0.25, Math.min(w, h) * 0.25);
+      const rectHeight = Math.max(0, h - tailHeight);
+
+      const r = element.roundness
+        ? getCornerRadius(Math.min(w, rectHeight), element)
+        : 0;
+
+      const tailLeft = w * 0.4;
+      const tailRight = w * 0.6;
+      const tailTip = w * 0.5;
+
+      const d =
+        r > 0
+          ? `M ${r} 0 L ${w - r} 0 Q ${w} 0, ${w} ${r} L ${w} ${
+              rectHeight - r
+            } Q ${w} ${rectHeight}, ${w - r} ${rectHeight} L ${
+              tailRight
+            } ${rectHeight} L ${tailTip} ${h} L ${tailLeft} ${
+              rectHeight
+            } L ${r} ${rectHeight} Q 0 ${rectHeight}, 0 ${
+              rectHeight - r
+            } L 0 ${r} Q 0 0, ${r} 0 Z`
+          : `M 0 0 L ${w} 0 L ${w} ${rectHeight} L ${tailRight} ${
+              rectHeight
+            } L ${tailTip} ${h} L ${tailLeft} ${rectHeight} L 0 ${
+              rectHeight
+            } Z`;
+
+      return generator.path(d, generateRoughOptions(element, true));
+    }
     case "line":
     case "arrow": {
       let shape: ElementShapes[typeof element.type];
@@ -914,6 +977,8 @@ export const getElementShape = <Point extends GlobalPoint | LocalPoint>(
 ): GeometricShape<Point> => {
   switch (element.type) {
     case "rectangle":
+    case "star":
+    case "speechBubble":
     case "diamond":
     case "frame":
     case "magicframe":

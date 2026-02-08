@@ -18,6 +18,8 @@ import {
   ellipseSegmentInterceptPoints,
 } from "@excalidraw/math/ellipse";
 
+import { getPolygonShape } from "@excalidraw/utils/shape";
+
 import type {
   Curve,
   GlobalPoint,
@@ -69,11 +71,61 @@ import type {
   ExcalidrawFreeDrawElement,
   ExcalidrawLinearElement,
   ExcalidrawRectanguloidElement,
+  ExcalidrawSpeechBubbleElement,
+  ExcalidrawStarElement,
   NonDeleted,
   NonDeletedExcalidrawElement,
   NonDeletedSceneElementsMap,
   Ordered,
 } from "./types";
+
+const intersectPolygonElementWithLineSegment = (
+  element: ExcalidrawStarElement | ExcalidrawSpeechBubbleElement,
+  segment: LineSegment<GlobalPoint>,
+  offset: number = 0,
+  onlyFirst = false,
+): GlobalPoint[] => {
+  const polygonShape = getPolygonShape<GlobalPoint>(element) as {
+    type: "polygon";
+    data: GlobalPoint[];
+  };
+  const center = pointFrom<GlobalPoint>(
+    element.x + element.width / 2,
+    element.y + element.height / 2,
+  );
+
+  const basePoints = polygonShape.data;
+  const points: GlobalPoint[] =
+    offset > 0
+      ? basePoints.map((p: GlobalPoint) => {
+          const dx = p[0] - center[0];
+          const dy = p[1] - center[1];
+          const len = Math.hypot(dx, dy) || 1;
+          return pointFrom<GlobalPoint>(
+            p[0] + (offset * dx) / len,
+            p[1] + (offset * dy) / len,
+          );
+        })
+      : basePoints;
+  const intersections: GlobalPoint[] = [];
+
+  for (let i = 0; i < points.length; i++) {
+    const a = points[i];
+    const b = points[(i + 1) % points.length];
+    const intersection = lineSegmentIntersectionPoints(
+      lineSegment(a, b),
+      segment,
+    );
+    if (intersection) {
+      intersections.push(intersection);
+      if (onlyFirst) {
+        return intersections;
+      }
+    }
+  }
+
+  return intersections;
+};
 
 export const shouldTestInside = (element: ExcalidrawElement) => {
   if (element.type === "arrow") {
@@ -94,7 +146,10 @@ export const shouldTestInside = (element: ExcalidrawElement) => {
     return isDraggableFromInside && isPathALoop(element.points);
   }
 
-  return isDraggableFromInside || isImageElement(element);
+  return (
+    isDraggableFromInside ||
+    isImageElement(element)
+  );
 };
 
 export type HitTestArgs = {
@@ -358,6 +413,14 @@ export const intersectElementWithLineSegment = (
       return intersectRectanguloidWithLineSegment(
         element,
         elementsMap,
+        line,
+        offset,
+        onlyFirst,
+      );
+    case "star":
+    case "speechBubble":
+      return intersectPolygonElementWithLineSegment(
+        element,
         line,
         offset,
         onlyFirst,

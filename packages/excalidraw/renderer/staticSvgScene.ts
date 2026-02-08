@@ -146,11 +146,17 @@ const renderElementToSvg = (
     }
     case "rectangle":
     case "diamond":
-    case "ellipse": {
+    case "ellipse":
+    case "star":
+    case "speechBubble": {
       const shape = ShapeCache.generateElementShape(element, null);
+      const drawable: Drawable | null = Array.isArray(shape) ? shape[0] : shape;
+      if (!drawable) {
+        break;
+      }
       const node = roughSVGDrawWithPrecision(
         rsvg,
-        shape,
+        drawable,
         MAX_DECIMALS_FOR_SVG_EXPORT,
       );
       if (opacity !== 1) {

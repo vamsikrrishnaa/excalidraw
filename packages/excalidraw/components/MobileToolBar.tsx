@@ -34,6 +34,9 @@ import {
   LassoIcon,
   mermaidLogoIcon,
   MagicIcon,
+  starIcon,
+  messageCircleIcon,
+  polygonIcon,
 } from "./icons";
 
 import "./ToolIcon.scss";
@@ -48,6 +51,11 @@ const SHAPE_TOOLS = [
     title: capitalizeString(t("toolBar.rectangle")),
   },
   {
+    type: "star",
+    icon: starIcon,
+    title: capitalizeString(t("toolBar.star")),
+  },
+  {
     type: "diamond",
     icon: DiamondIcon,
     title: capitalizeString(t("toolBar.diamond")),
@@ -56,6 +64,11 @@ const SHAPE_TOOLS = [
     type: "ellipse",
     icon: EllipseIcon,
     title: capitalizeString(t("toolBar.ellipse")),
+  },
+  {
+    type: "speechBubble",
+    icon: messageCircleIcon,
+    title: capitalizeString(t("toolBar.speechBubble")),
   },
 ] as const;
 
@@ -79,6 +92,11 @@ const LINEAR_ELEMENT_TOOLS = [
     title: capitalizeString(t("toolBar.arrow")),
   },
   { type: "line", icon: LineIcon, title: capitalizeString(t("toolBar.line")) },
+  {
+    type: "polygon",
+    icon: polygonIcon,
+    title: capitalizeString(t("toolBar.polygon")),
+  },
 ] as const;
 
 type MobileToolBarProps = {
@@ -95,10 +113,10 @@ export const MobileToolBar = ({
   const activeTool = app.state.activeTool;
   const [isOtherShapesMenuOpen, setIsOtherShapesMenuOpen] = useState(false);
   const [lastActiveGenericShape, setLastActiveGenericShape] = useState<
-    "rectangle" | "diamond" | "ellipse"
+    "rectangle" | "diamond" | "ellipse" | "star" | "speechBubble"
   >("rectangle");
   const [lastActiveLinearElement, setLastActiveLinearElement] = useState<
-    "arrow" | "line"
+    "arrow" | "line" | "polygon"
   >("arrow");
 
   // keep lastActiveGenericShape in sync with active tool if user switches via other UI
@@ -106,7 +124,9 @@ export const MobileToolBar = ({
     if (
       activeTool.type === "rectangle" ||
       activeTool.type === "diamond" ||
-      activeTool.type === "ellipse"
+      activeTool.type === "ellipse" ||
+      activeTool.type === "star" ||
+      activeTool.type === "speechBubble"
     ) {
       setLastActiveGenericShape(activeTool.type);
     }
@@ -114,7 +134,11 @@ export const MobileToolBar = ({
 
   // keep lastActiveLinearElement in sync with active tool if user switches via other UI
   useEffect(() => {
-    if (activeTool.type === "arrow" || activeTool.type === "line") {
+    if (
+      activeTool.type === "arrow" ||
+      activeTool.type === "line" ||
+      activeTool.type === "polygon"
+    ) {
       setLastActiveLinearElement(activeTool.type);
     }
   }, [activeTool.type]);
@@ -272,10 +296,14 @@ export const MobileToolBar = ({
           t(
             lastActiveGenericShape === "rectangle"
               ? "toolBar.rectangle"
+              : lastActiveGenericShape === "star"
+              ? "toolBar.star"
               : lastActiveGenericShape === "diamond"
               ? "toolBar.diamond"
               : lastActiveGenericShape === "ellipse"
               ? "toolBar.ellipse"
+              : lastActiveGenericShape === "speechBubble"
+              ? "toolBar.speechBubble"
               : "toolBar.rectangle",
           ),
         )}
@@ -283,8 +311,10 @@ export const MobileToolBar = ({
         onToolChange={(type: string) => {
           if (
             type === "rectangle" ||
+            type === "star" ||
             type === "diamond" ||
-            type === "ellipse"
+            type === "ellipse" ||
+            type === "speechBubble"
           ) {
             setLastActiveGenericShape(type);
             app.setActiveTool({ type });
@@ -307,13 +337,15 @@ export const MobileToolBar = ({
           t(
             lastActiveLinearElement === "arrow"
               ? "toolBar.arrow"
+              : lastActiveLinearElement === "polygon"
+              ? "toolBar.polygon"
               : "toolBar.line",
           ),
         )}
         data-testid="toolbar-arrow"
         fillable={true}
         onToolChange={(type: string) => {
-          if (type === "arrow" || type === "line") {
+          if (type === "arrow" || type === "line" || type === "polygon") {
             setLastActiveLinearElement(type);
             app.setActiveTool({ type });
           }
@@ -426,6 +458,7 @@ export const MobileToolBar = ({
               {t("toolBar.image")}
             </DropdownMenu.Item>
           )}
+
           {!showFrameToolOutside && (
             <DropdownMenu.Item
               onSelect={() => app.setActiveTool({ type: "frame" })}
@@ -444,6 +477,13 @@ export const MobileToolBar = ({
             selected={embeddableToolSelected}
           >
             {t("toolBar.embeddable")}
+          </DropdownMenu.Item>
+          <DropdownMenu.Item
+            onSelect={() => app.onPresentationToolbarButtonClick()}
+            icon={EmbedIcon}
+            data-testid="toolbar-presentation"
+          >
+            {t("toolBar.presentation")}
           </DropdownMenu.Item>
           <DropdownMenu.Item
             onSelect={() => app.setActiveTool({ type: "laser" })}

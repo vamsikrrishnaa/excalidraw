@@ -254,27 +254,30 @@ import type { GlobalPoint, LocalPoint, Radians } from "@excalidraw/math";
 
 import type {
   ExcalidrawElement,
-  ExcalidrawFreeDrawElement,
-  ExcalidrawGenericElement,
-  ExcalidrawLinearElement,
-  ExcalidrawTextElement,
-  NonDeleted,
-  InitializedExcalidrawImageElement,
-  ExcalidrawImageElement,
-  FileId,
-  NonDeletedExcalidrawElement,
-  ExcalidrawTextContainer,
   ExcalidrawFrameLikeElement,
+  ExcalidrawFrameElement,
+  ExcalidrawGenericElement,
+  ExcalidrawArrowElement,
+  ExcalidrawElbowArrowElement,
+  ExcalidrawFreeDrawElement,
+  ExcalidrawEmbeddableElement,
+  ExcalidrawImageElement,
+  InitializedExcalidrawImageElement,
+  ExcalidrawLinearElement,
+  ExcalidrawSelectionElement,
+  ExcalidrawTextElement,
+  ExcalidrawIframeElement,
+  FileId,
+  FontFamilyValues,
+  MagicGenerationData,
+  NonDeleted,
+  NonDeletedExcalidrawElement,
+  Ordered,
+  SceneElementsMap,
+  ExcalidrawTextContainer,
   ExcalidrawMagicFrameElement,
   ExcalidrawIframeLikeElement,
   IframeData,
-  ExcalidrawIframeElement,
-  ExcalidrawEmbeddableElement,
-  Ordered,
-  MagicGenerationData,
-  ExcalidrawArrowElement,
-  ExcalidrawElbowArrowElement,
-  SceneElementsMap,
   ExcalidrawBindableElement,
 } from "@excalidraw/element/types";
 
@@ -1620,7 +1623,7 @@ class App extends React.Component<AppProps, AppState> {
                       allowFullScreen={true}
                       sandbox={`${
                         src?.sandbox?.allowSameOrigin ? "allow-same-origin" : ""
-                      } allow-scripts allow-forms allow-popups allow-popups-to-escape-sandbox allow-presentation allow-downloads`}
+                      } allow-scripts allow-forms allow-popups allow-popups-to-escape-sandbox allow-downloads`}
                     />
                   )}
                 </div>
@@ -2253,6 +2256,234 @@ class App extends React.Component<AppProps, AppState> {
       isImageFileHandle(fileHandle)
     ) {
       this.setState({ fileHandle });
+    }
+  };
+
+  public onPresentationToolbarButtonClick = async () => {
+    try {
+      const clientX = this.state.width / 2 + this.state.offsetLeft;
+      const clientY = this.state.height / 2 + this.state.offsetTop;
+
+      const { x, y } = viewportCoordsToSceneCoords(
+        { clientX, clientY },
+        this.state,
+      );
+
+      const presentationFile = await fileOpen({
+        description: "Presentation",
+        extensions: ["pptx"],
+      });
+
+      const PPTX_MAX_ALLOWED_FILE_BYTES = 30 * 1024 * 1024;
+
+      if (presentationFile.size > PPTX_MAX_ALLOWED_FILE_BYTES) {
+        throw new Error(
+          t("errors.fileTooBig", {
+            maxSize: `${Math.trunc(PPTX_MAX_ALLOWED_FILE_BYTES / 1024 / 1024)}MB`,
+          }),
+        );
+      }
+
+      const getCookie = (name: string): string | null => {
+        try {
+          const cookieStr = document.cookie || "";
+          const parts = cookieStr.split(";").map((p) => p.trim());
+          for (const p of parts) {
+            if (!p) continue;
+            const eq = p.indexOf("=");
+            if (eq <= 0) continue;
+            const k = decodeURIComponent(p.slice(0, eq));
+            if (k === name) {
+              return decodeURIComponent(p.slice(eq + 1));
+            }
+          }
+        } catch {}
+        return null;
+      };
+
+      const formData = new FormData();
+      formData.append("file", presentationFile);
+
+      const headers: Record<string, string> = {};
+      const csrfToken = getCookie("csrfToken") || getCookie("csrf-token");
+      if (csrfToken) {
+        headers["x-csrf-token"] = csrfToken;
+      }
+
+      const response = await fetch("/api/pptx/convert", {
+        method: "POST",
+        body: formData,
+        headers,
+        credentials: "include",
+      });
+
+      const result = (await response.json().catch(() => null)) as
+        | {
+            status: "success";
+            slides: Array<{ index: number; url: string; fileName?: string }>;
+          }
+        | { error?: string }
+        | null;
+
+      if (!response.ok || !result || (result as any).status !== "success") {
+        const err = (result as any)?.error;
+        throw new Error(err || t("errors.presentationInsertError"));
+      }
+
+      const slides = Array.isArray((result as any).slides)
+        ? ((result as any).slides as Array<{
+            index: number;
+            url: string;
+            fileName?: string;
+          }>)
+        : [];
+
+      if (!slides.length) {
+        throw new Error(t("errors.presentationInsertError"));
+      }
+
+      const [gridX, gridY] = getGridPoint(x, y, this.getEffectiveGridSize());
+      const createdElements: ExcalidrawElement[] = [];
+
+      const slideGap = 80 / this.state.zoom.value;
+      let cursorY = gridY;
+
+      for (let i = 0; i < slides.length; i++) {
+        const slide = slides[i];
+        const fileName = slide.fileName || `slide-${i + 1}.png`;
+
+        const framePlaceholder = newFrameElement({
+          ...FRAME_STYLE,
+          x: gridX,
+          y: cursorY,
+          width: 640,
+          height: 360,
+          opacity: 100,
+          locked: false,
+          name: `Slide ${i + 1}`,
+        });
+
+        const imagePlaceholder = newImageElement({
+          type: "image",
+          x: framePlaceholder.x,
+          y: framePlaceholder.y,
+          width: framePlaceholder.width,
+          height: framePlaceholder.height,
+          opacity: 100,
+          locked: true,
+          frameId: framePlaceholder.id,
+          strokeColor: "transparent",
+          backgroundColor: "transparent",
+          fillStyle: this.state.currentItemFillStyle,
+          strokeWidth: this.state.currentItemStrokeWidth,
+          strokeStyle: this.state.currentItemStrokeStyle,
+          roughness: this.state.currentItemRoughness,
+          roundness: null,
+        });
+
+        const slideFile = await ImageURLToFile(slide.url, fileName);
+        if (!slideFile) {
+          continue;
+        }
+
+        const initializedImage = await this.initializeImage(
+          imagePlaceholder,
+          await normalizeFile(slideFile),
+        );
+
+        const slideImage = newElementWith(initializedImage, {
+          x: framePlaceholder.x,
+          y: framePlaceholder.y,
+          frameId: framePlaceholder.id,
+          locked: true,
+          opacity: 100,
+          strokeColor: "transparent",
+          backgroundColor: "transparent",
+        });
+
+        const frame = newElementWith(framePlaceholder, {
+          x: slideImage.x,
+          y: slideImage.y,
+          width: slideImage.width,
+          height: slideImage.height,
+        });
+
+        createdElements.push(frame, slideImage);
+
+        try {
+          const restored = await loadFromBlob(
+            slideFile,
+            this.state,
+            this.scene.getElementsIncludingDeleted(),
+          );
+
+          if (restored?.files) {
+            this.addMissingFiles(restored.files);
+          }
+
+          const rawImportedElements = Array.isArray(restored?.elements)
+            ? restored.elements.filter((el) => !el.isDeleted)
+            : [];
+          const importedNoFrames = rawImportedElements.filter(
+            (el) => !isFrameLikeElement(el),
+          );
+
+          if (importedNoFrames.length) {
+            const { duplicatedElements } = duplicateElements({
+              type: "everything",
+              elements: importedNoFrames,
+            });
+
+            const [minX, minY] = getCommonBounds(duplicatedElements);
+            const dx = frame.x - minX;
+            const dy = frame.y - minY;
+
+            const positioned = duplicatedElements.map((el) =>
+              newElementWith(el, {
+                x: el.x + dx,
+                y: el.y + dy,
+                frameId: frame.id,
+              }),
+            );
+
+            createdElements.push(...positioned);
+          }
+        } catch (error: any) {
+          // ignore missing scene data
+        }
+
+        cursorY = frame.y + frame.height + slideGap;
+      }
+
+      const firstFrameId = createdElements.find(
+        (el) => el.type === "frame" && !el.isDeleted,
+      )?.id;
+
+      this.updateScene({
+        elements: [...this.scene.getElementsIncludingDeleted(), ...createdElements],
+        appState: {
+          selectedElementIds: makeNextSelectedElementIds(
+            firstFrameId ? { [firstFrameId]: true } : {},
+            this.state,
+          ),
+          activeTool: updateActiveTool(this.state, {
+            type: this.state.preferredSelectionTool.type,
+          }),
+        },
+        captureUpdate: CaptureUpdateAction.IMMEDIATELY,
+      });
+
+      this.setState({}, () => {
+        this.actionManager.executeAction(actionFinalize);
+      });
+    } catch (error: any) {
+      if (error?.name === "AbortError") {
+        return;
+      }
+      console.error(error);
+      this.setState({
+        errorMessage: error?.message || t("errors.presentationInsertError"),
+      });
     }
   };
 
@@ -7279,11 +7510,14 @@ class App extends React.Component<AppProps, AppState> {
       this.handleTextOnPointerDown(event, pointerDownState);
     } else if (
       this.state.activeTool.type === "arrow" ||
-      this.state.activeTool.type === "line"
+      this.state.activeTool.type === "line" ||
+      this.state.activeTool.type === "polygon"
     ) {
       this.handleLinearElementOnPointerDown(
         event,
-        this.state.activeTool.type,
+        this.state.activeTool.type === "polygon"
+          ? "line"
+          : this.state.activeTool.type,
         pointerDownState,
       );
     } else if (this.state.activeTool.type === "freedraw") {
@@ -8581,6 +8815,7 @@ class App extends React.Component<AppProps, AppState> {
                 this.state.currentItemRoundness === "round"
                   ? { type: ROUNDNESS.PROPORTIONAL_RADIUS }
                   : null,
+              polygon: this.state.activeTool.type === "polygon",
               locked: false,
               frameId: topLayerFrame ? topLayerFrame.id : null,
             });
@@ -8679,13 +8914,7 @@ class App extends React.Component<AppProps, AppState> {
   };
 
   private getCurrentItemRoundness(
-    elementType:
-      | "selection"
-      | "rectangle"
-      | "diamond"
-      | "ellipse"
-      | "iframe"
-      | "embeddable",
+    elementType: ExcalidrawGenericElement["type"] | "embeddable" | "iframe",
   ) {
     return this.state.currentItemRoundness === "round"
       ? {
@@ -11139,7 +11368,7 @@ class App extends React.Component<AppProps, AppState> {
     placeholders.forEach((el) => this.scene.insertElement(el));
 
     // Create, position, insert and select initialized (replacing placeholders)
-    const initialized = await Promise.all(
+    const initialized = (await Promise.all(
       placeholders.map(async (placeholder, i) => {
         try {
           return await this.initializeImage(
@@ -11153,8 +11382,8 @@ class App extends React.Component<AppProps, AppState> {
           return newElementWith(placeholder, { isDeleted: true });
         }
       }),
-    );
-    const initializedMap = arrayToMap(initialized);
+    )) as ExcalidrawElement[];
+    const initializedMap = arrayToMap<ExcalidrawElement>(initialized);
 
     const positioned = positionElementsOnGrid(
       initialized.filter((el) => !el.isDeleted),
@@ -11162,7 +11391,7 @@ class App extends React.Component<AppProps, AppState> {
       sceneY,
       gridPadding,
     );
-    const positionedMap = arrayToMap(positioned);
+    const positionedMap = arrayToMap<ExcalidrawElement>(positioned);
 
     const nextElements = this.scene
       .getElementsIncludingDeleted()
@@ -11235,6 +11464,7 @@ class App extends React.Component<AppProps, AppState> {
     if (imageFiles.length > 0 && this.isToolSupported("image")) {
       return this.insertImages(imageFiles, sceneX, sceneY);
     }
+
     const excalidrawLibrary_ids = dataTransferList.getData(
       MIME_TYPES.excalidrawlibIds,
     );
@@ -12121,21 +12351,6 @@ class App extends React.Component<AppProps, AppState> {
 // -----------------------------------------------------------------------------
 // TEST HOOKS
 // -----------------------------------------------------------------------------
-declare global {
-  interface Window {
-    h: {
-      scene: Scene;
-      elements: readonly ExcalidrawElement[];
-      state: AppState;
-      setState: React.Component<any, AppState>["setState"];
-      watchState: (prev: any, next: any) => void | undefined;
-      app: InstanceType<typeof App>;
-      history: History;
-      store: Store;
-    };
-  }
-}
-
 export const createTestHook = () => {
   if (isTestEnv() || isDevEnv()) {
     window.h = window.h || ({} as Window["h"]);

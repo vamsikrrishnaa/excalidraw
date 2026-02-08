@@ -142,10 +142,13 @@ export type ToolType =
   | "selection"
   | "lasso"
   | "rectangle"
+  | "star"
   | "diamond"
   | "ellipse"
+  | "speechBubble"
   | "arrow"
   | "line"
+  | "polygon"
   | "freedraw"
   | "text"
   | "image"
@@ -677,6 +680,9 @@ export type UIOptions = Partial<{
   canvasActions: CanvasActions;
   tools: {
     image: boolean;
+    star?: boolean;
+    speechBubble?: boolean;
+    polygon?: boolean;
   };
   /**
    * Optionally control the editor form factor and desktop UI mode from the host app.
@@ -740,6 +746,7 @@ export type AppClassProperties = {
   setActiveTool: App["setActiveTool"];
   setOpenDialog: App["setOpenDialog"];
   insertEmbeddableElement: App["insertEmbeddableElement"];
+  onPresentationToolbarButtonClick: App["onPresentationToolbarButtonClick"];
   onMagicframeToolSelect: App["onMagicframeToolSelect"];
   getName: App["getName"];
   dismissLinearEditor: App["dismissLinearEditor"];
